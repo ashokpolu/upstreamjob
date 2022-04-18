@@ -1,0 +1,46 @@
+currentBuild.displayName = "maven-web-application-#"+currentBuild.number
+node() {
+    def mavenHome=tool name: "Maven", type: 'maven'
+	 echo "GitHub BranhName ${env.BRANCH_NAME}"
+     echo "Jenkins Job Number ${env.BUILD_NUMBER}"
+     echo "Jenkins Node Name ${env.NODE_NAME}"
+     echo "Jenkins Home ${env.JENKINS_HOME}"
+     echo "Jenkins URL ${env.JENKINS_URL}"
+     echo "JOB Name ${env.JOB_NAME}"
+	  
+    stage('checkout'){
+        git credentialsId: 'github', url: 'https://github.com/ashokpolu/maven-web-application.git'
+    }
+    stage('Build'){
+        sh "${mavenHome}/bin/mvn clean package --batch-mode -v -U -X -e"  
+    }
+ stage('Deploying Code') {
+     UdeployBuildResult = build job: 'Udeploy', parameters: [string(name: "ApplicationName", value: "${ApplicationName}"), string(name: "DeployEnv", value: "${DeployEnv}"), string(name: "compName", value: "${compName}"),
+ string(name: "BasePath", value: "${WORKSPACE}/${RepoPath}"), string(name: "BuildVersion", value: "${DeployEnv}-${App_Context}-${BUILD_NUMBER}"), string(name: "PushProperties", value: "${App_Context}"), string(name: "Upstream_Node_Name", value: "${NODE_NAME}")]
+ echo "Udeploy Build Result is " + UdeployBuildResult.result + " & Duration is " + UdeployBuildResult.durationString;
+ if (UdeployBuildResult.result.equals("FAILURE")) {
+    currentBuild.result = "FAILURE"
+	} else if (UdeployBuildResult.result.equals("SUCCESS")) {
+	  currentBuild.result = "SUCCESS"
+	  }
+} 
+// catch (caughtError) {
+//  echo "Caught Error: ${caughtError}"
+//  currentBuild.result = "FAILURE"
+//  err = caughtError;
+// } finally {
+//   sendmail()
+//   if (err) {
+//     throw err
+//	 }
+// } //NODE END
+ 
+  stage('EmailNotification')
+ {
+ mail bcc: 'ashokpolu03@gmail.com', body: '''Build Over
+
+ Thanks,
+ Ashokpolu03@gmail.com,
+ 9699572145.''', cc: 'ashokpolu03@gmail.com', from: '', replyTo: '', subject: "Status: ${currentBuild.result?:'SUCCESS'} - Job \'${env.BUILD_NUMBER}:${env.BUILD_URL}\'", to: 'ashokpolu03@gmail.com'
+     }
+ }
